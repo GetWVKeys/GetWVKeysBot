@@ -66,25 +66,25 @@ async def on_command_error(ctx: commands.Context, e: Exception):
     if isinstance(e, commands.CommandNotFound):
         return
     if isinstance(e, commands.MissingRequiredArgument):
-        await ctx.send("You are missing a required argument. Please check the command's syntax.")
+        await ctx.reply("You are missing a required argument. Please check the command's syntax.")
         return
     if isinstance(e, commands.BadArgument):
-        await ctx.send("Please check the argument you provided. It is invalid.")
+        await ctx.reply("Please check the argument you provided. It is invalid.")
         return
     if isinstance(e, commands.CheckFailure):
-        await ctx.send("You are not allowed to use this command.")
+        await ctx.reply("You are not allowed to use this command.")
         return
     if isinstance(e, commands.CommandOnCooldown):
-        await ctx.send("You are on cooldown. Please wait {} seconds before using this command again.".format(
+        await ctx.reply("You are on cooldown. Please wait {} seconds before using this command again.".format(
             round(e.retry_after)))
         return
     if isinstance(e, commands.CommandInvokeError):
         logger.error("[Discord] {}".format(e))
-        await ctx.send("An error occurred while executing the command. Please try again later.")
+        await ctx.reply("An error occurred while executing the command. Please try again later.")
         return
     if isinstance(e, commands.CommandError):
         logger.error("[Discord] {}".format(e))
-        await ctx.send("An error occurred while executing the command. Please try again later.")
+        await ctx.reply("An error occurred while executing the command. Please try again later.")
         return
     logger.error("[Discord] An error occurred while executing the command {}".format(
         ctx.command.name))
@@ -93,7 +93,7 @@ async def on_command_error(ctx: commands.Context, e: Exception):
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
+    await ctx.reply(f'Pong! {round(bot.latency * 1000)}ms')
 
 
 @bot.command()
@@ -101,7 +101,7 @@ async def ping(ctx):
 async def sync(ctx: commands.Context):
     # only allow admins to use command
     if not str(ctx.author.id) in ADMIN_USERS:
-        return await ctx.send("You're not elite enough, try harder.")
+        return await ctx.reply("You're not elite enough, try harder.")
     m = await ctx.send("Syncing the banned users with the database might take a while. Please be patient.")
     # sync the banned users with the database
     try:
@@ -118,25 +118,25 @@ async def sync(ctx: commands.Context):
 async def user_count(ctx):
     try:
         count = make_api_request(APIAction.USER_COUNT)
-        await ctx.send("There are currently {} users in the database.".format(count))
+        await ctx.reply("There are currently {} users in the database.".format(count))
     except Exception as e:
         logger.error(e)
-        await ctx.send("An error occurred while fetching the user count.")
+        await ctx.reply("An error occurred while fetching the user count.")
 
 
 @bot.command(name="keycount")
 async def key_count(ctx):
     try:
         count = make_api_request(APIAction.KEY_COUNT)
-        await ctx.send("There are currently {} keys in the database.".format(count))
+        await ctx.reply("There are currently {} keys in the database.".format(count))
     except Exception as e:
         logger.error(e)
-        await ctx.send("An error occurred while fetching the key count.")
+        await ctx.reply("An error occurred while fetching the key count.")
 
 
 @bot.command(name="search")
 async def key_search(ctx, query):
-    pass
+    await ctx.reply("Coming soon!")
 
 
 if __name__ == "__main__":
