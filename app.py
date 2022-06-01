@@ -128,10 +128,10 @@ async def user_count(ctx):
 async def key_count(ctx):
     try:
         count = make_api_request(APIAction.KEY_COUNT)
-        await ctx.send("There are currently {} users in the database.".format(count))
+        await ctx.send("There are currently {} keys in the database.".format(count))
     except Exception as e:
         logger.error(e)
-        await ctx.send("An error occurred while fetching the user count.")
+        await ctx.send("An error occurred while fetching the key count.")
 
 
 @bot.command(name="search")
