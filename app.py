@@ -91,12 +91,12 @@ async def on_command_error(ctx: commands.Context, e: Exception):
     logger.error("[Discord] {}".format(e))
 
 
-@bot.command()
+@bot.command(help="Pong!")
 async def ping(ctx):
     await ctx.reply(f'Pong! {round(bot.latency * 1000)}ms')
 
 
-@bot.command()
+@bot.command(hidden=True, help="Sync the guild bans with the database. This will disable users that are banned from the guild.")
 @commands.cooldown(1, 3600, commands.BucketType.guild)
 async def sync(ctx: commands.Context):
     # only allow admins to use command
@@ -114,7 +114,7 @@ async def sync(ctx: commands.Context):
         await m.reply(content="An error occurred while syncing the guild bans.")
 
 
-@bot.command(name="usercount")
+@bot.command(name="usercount", help="Get the number of users that have registered on the site.")
 async def user_count(ctx):
     try:
         count = make_api_request(APIAction.USER_COUNT)
@@ -124,7 +124,7 @@ async def user_count(ctx):
         await ctx.reply("An error occurred while fetching the user count.")
 
 
-@bot.command(name="keycount")
+@bot.command(name="keycount", help="Get the number of cached keys in the database.")
 async def key_count(ctx):
     try:
         count = make_api_request(APIAction.KEY_COUNT)
@@ -134,9 +134,44 @@ async def key_count(ctx):
         await ctx.reply("An error occurred while fetching the key count.")
 
 
-@bot.command(name="search")
-async def key_search(ctx, query):
-    await ctx.reply("Coming soon!")
+@bot.command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
+async def key_search(ctx: commands.Context, query):
+    if len(query) < 32:
+        return await ctx.reply("Sorry, your query is not valid.")
+    m = await ctx.send(content="Searching...")
+    try:
+        results = make_api_request(APIAction.SEARCH, {"query": query})
+        if not results:
+            return await m.edit(content="The response was null. Please report this to the developers.")
+        kid = results.get("kid")
+        keys = results.get("keys")
+        if len(keys) == 0:
+            return await m.edit(content="There were no results. sadface.")
+
+        embed = discord.Embed(
+            title="Search Results for '{}'".format(query), description="Found **{}** result{}".format(len(keys), "s" if len(keys) > 1 else ""))
+
+        results_field = ""
+        for key_entry in keys:
+            key = key_entry.get("key")
+            # added_at = key_entry.get("added_at")
+            # license_url = key_entry.get("license_url")
+            field_value = "{}\n".format(key)
+            # if adding the field_value to results_field exceeds 1024 characters, don't add the field
+            if len(results_field + field_value) > 1024:
+                logger.warn(
+                    "Adding the field value to the results field would exceed 1024 characters. KID: {}".format(kid))
+                embed.set_footer(
+                    text="{} keys were omitted.".format(len(keys) - len(results_field.split("\n"))))
+                break
+            results_field += field_value
+
+        embed.add_field(name="Results", value=results_field, inline=False)
+
+        await m.edit(embed=embed, content="")
+    except Exception as e:
+        logger.error(e)
+        await m.edit(content="An error occurred while searching.")
 
 
 if __name__ == "__main__":
