@@ -17,6 +17,7 @@ class APIAction(Enum):
     ENABLE_USER = "enable"
     KEY_COUNT = "keycount"
     USER_COUNT = "usercount"
+    SEARCH = "search"
 
 
 def construct_logger():
