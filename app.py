@@ -209,6 +209,7 @@ async def disable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("User {}#{} (`{}`) was disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
+        await ctx.reply("An error occurred while disabling user.")
 
 
 @bot.command(hidden=True, help="Enable a user account")
@@ -227,6 +228,7 @@ async def enable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("User {}#{} (`{}`) was enabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
+        await ctx.reply("An error occurred while enabling user.")
 
 
 if __name__ == "__main__":
