@@ -3,6 +3,8 @@ import json
 import random
 import redis
 
+from getwvkeysbot.config import REDIS_URI
+
 
 class OPCode(Enum):
     DISABLE_USER = 0
@@ -16,7 +18,7 @@ class OPCode(Enum):
     REPLY = 8
 
 
-redis_cli = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True, encoding="utf-8", password=None)
+redis_cli = redis.Redis.from_url(REDIS_URI, decode_responses=True, encoding="utf8")
 
 p = redis_cli.pubsub(ignore_subscribe_messages=True)
 
