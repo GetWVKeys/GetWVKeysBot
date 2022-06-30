@@ -33,8 +33,7 @@ def construct_logger():
     stream.setLevel(LOG_LEVEL)
     stream.setFormatter(console_formatter)
     # create a handler for file logging, 5 mb max size, with 5 backup files
-    file_handler = logging.handlers.RotatingFileHandler(
-        LOG_FILE_PATH, maxBytes=(1024*1024) * 5, backupCount=5)
+    file_handler = logging.handlers.RotatingFileHandler(LOG_FILE_PATH, maxBytes=(1024 * 1024) * 5, backupCount=5)
     file_handler.setFormatter(file_formatter)
 
     # construct the logger
@@ -47,20 +46,15 @@ def construct_logger():
 
 def make_api_request(action: APIAction, data={}):
     data["action"] = action.value
-    header = {
-        "X-API-Key": base64.b64encode("{}:{}".format(CLIENT_ID, CLIENT_SECRET).encode()).decode("utf8")
-    }
-    logger.debug("Making request to {} with data {} and header {}".format(
-        API_URL, json.dumps(data), json.dumps(header)))
+    header = {"X-API-Key": base64.b64encode("{}:{}".format(CLIENT_ID, CLIENT_SECRET).encode()).decode("utf8")}
+    logger.debug("Making request to {} with data {} and header {}".format(API_URL, json.dumps(data), json.dumps(header)))
     res = requests.post(API_URL, json=data, headers=header)
     # res.raise_for_status()
     if not res.ok and len(res.content) == 0:
         res.raise_for_status()
     d = res.json()
-    logger.debug("Recieved response from {}: {}".format(
-        API_URL, json.dumps(d)))
+    logger.debug("Recieved response from {}: {}".format(API_URL, json.dumps(d)))
     if d.get("error", False) == True:
-        raise Exception("API Error: Recieved HTTP Code {} with message: {}".format(
-            d.get("code"), d.get("message")))
+        raise Exception("API Error: Recieved HTTP Code {} with message: {}".format(d.get("code"), d.get("message")))
 
     return d.get("message")
