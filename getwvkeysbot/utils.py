@@ -1,4 +1,3 @@
-import base64
 import logging
 import logging.handlers
 from coloredlogs import ColoredFormatter
