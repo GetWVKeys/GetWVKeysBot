@@ -253,7 +253,7 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
         await ctx.reply("API Key for {}#{} (`{}`) was reset.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
-        await ctx.reply("An error occurred while resetting user API Key.")
+        await ctx.reply("An error occurred while resetting user API Key: {}".format(e))
 
 
 async def _make_api_request(action: OPCode, data={}):

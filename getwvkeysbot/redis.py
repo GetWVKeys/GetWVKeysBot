@@ -1,12 +1,17 @@
 from enum import Enum
 import json
+import logging
 import random
 import redis
 
 from getwvkeysbot.config import REDIS_URI
 
 
+logger = logging.getLogger(__name__)
+
+
 class OPCode(Enum):
+    ERROR = -1
     DISABLE_USER = 0
     DISABLE_USER_BULK = 1
     ENABLE_USER = 2
@@ -52,7 +57,12 @@ def make_api_request(action: OPCode, data={}):
 
     redis_cli.publish("api", json.dumps(payload))
     for message in p.listen():
-        print(message)
+        logger.debug(message)
         if message["type"] == "message":
             p.unsubscribe(reply_address)
-            return json.loads(message["data"])["d"]["message"]
+            rd = json.loads(message["data"])
+            rmsg = rd["d"]["message"]
+            rop = rd["op"]
+            if rop == OPCode.ERROR.value:
+                raise Exception(rmsg)
+            return rmsg
