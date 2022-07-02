@@ -209,7 +209,7 @@ async def disable_user(ctx: commands.Context, user: discord.User):
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(user.id, e))
-            return await ctx.reply("An error occurred while trying to disable user {}:{} (`{}`) <@&975780356970123265>".format(user.name, user.discriminator, user.id))
+            return await ctx.reply("An error occurred while trying to disable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was disabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
@@ -228,12 +228,32 @@ async def enable_user(ctx: commands.Context, user: discord.User):
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.error("[Discord] HTTPException while trying to enable user {}: {}".format(user.id, e))
-            return await ctx.reply.send("An error occurred while trying to enable user {}:{} (`{}`) <@&975780356970123265>".format(user.name, user.discriminator, user.id))
+            return await ctx.reply.send("An error occurred while trying to enable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was enabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was enabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
         await ctx.reply("An error occurred while enabling user.")
+
+
+@bot.command(hidden=True, help="Reset a users API Key")
+# TODO: limit this to 2 times per day
+async def reset_api_key(ctx: commands.Context, user: discord.User):
+    # only allow admins to use command
+    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
+        return await ctx.reply("You're not elite enough, try harder.")
+    try:
+        log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
+        try:
+            await _make_api_request(OPCode.RESET_API_KEY, {"user_id": user.id})
+        except HTTPException as e:
+            logger.error("[Discord] HTTPException while trying to reset API Key for {}: {}".format(user.id, e))
+            return await ctx.reply.send("An error occurred while trying to reset API Key for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+        await log_channel.send("API Key reset for {}#{} (`{}`) by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
+        await ctx.reply("API Key reset for {}#{} (`{}`)".format(user.name, user.discriminator, user.id))
+    except Exception as e:
+        logger.error("[Discord] {}".format(e))
+        await ctx.reply("An error occurred while resetting user API Key.")
 
 
 async def _make_api_request(action: OPCode, data={}):
