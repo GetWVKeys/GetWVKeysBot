@@ -137,7 +137,7 @@ async def sync(ctx: commands.Context):
         await m.reply("{} guild bans have been synced with the database.".format(len(banned_users)))
     except Exception as e:
         logger.exception(e)
-        await m.reply(content="An error occurred while syncing the guild bans.")
+        await m.reply(content="An error occurred while syncing the guild bans: {}".format(e))
 
 
 @bot.command(name="usercount", help="Get the number of users that have registered on the site.")
@@ -148,7 +148,7 @@ async def user_count(ctx: commands.Context):
         await ctx.reply("There are currently {} users in the database.".format(count))
     except Exception as e:
         logger.exception(e)
-        await ctx.reply("An error occurred while fetching the user count.")
+        await ctx.reply("An error occurred while fetching the user count: {}".format(e))
 
 
 @bot.command(name="keycount", help="Get the number of cached keys in the database.")
@@ -158,7 +158,7 @@ async def key_count(ctx):
         await ctx.reply("There are currently {} keys in the database.".format(count))
     except Exception as e:
         logger.exception(e)
-        await ctx.reply("An error occurred while fetching the key count.")
+        await ctx.reply("An error occurred while fetching the key count: {}".format(e))
 
 
 @bot.command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
@@ -195,7 +195,7 @@ async def key_search(ctx: commands.Context, query):
         await m.edit(embed=embed, content="")
     except Exception as e:
         logger.exception(e)
-        await m.edit(content="An error occurred while searching.")
+        await m.edit(content="An error occurred while searching: {}".format(e))
 
 
 @bot.command(hidden=True, help="Disable a user account")
@@ -214,7 +214,7 @@ async def disable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("User {}#{} (`{}`) was disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
-        await ctx.reply("An error occurred while disabling user.")
+        await ctx.reply("An error occurred while disabling user: {}".format(e))
 
 
 @bot.command(hidden=True, help="Enable a user account")
@@ -233,7 +233,7 @@ async def enable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("User {}#{} (`{}`) was enabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.error("[Discord] {}".format(e))
-        await ctx.reply("An error occurred while enabling user.")
+        await ctx.reply("An error occurred while enabling user: {}".format(e))
 
 
 @bot.command(hidden=True, help="Reset a users API Key")
