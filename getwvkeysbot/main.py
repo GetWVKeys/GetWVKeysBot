@@ -48,6 +48,9 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
     if user.bot:
         # ignore bots
         return
+    if not VERIFIED_ROLE in user._roles:
+        # ignore users that are not verified
+        return
     logger.info("[Discord] User {}#{} (`{}`) was removed from {}".format(user.name, user.discriminator, user.id, user.guild.name))
 
     try:
