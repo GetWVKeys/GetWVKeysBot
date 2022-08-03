@@ -22,11 +22,14 @@ async def on_ready():
     logger.info("[Discord] Logged in as {}#{}".format(bot.user.name, bot.user.discriminator))
 
 
+# handles banning of users
 @bot.event
 async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.Member]):
-    # handles banning of users
+    # ignore bots
     if user.bot:
-        # ignore bots
+        return
+    # ignore users that are not verified
+    if not VERIFIED_ROLE in user._roles:
         return
     logger.info("[Discord] User {}#{} (`{}`) was banned from {}".format(user.name, user.discriminator, user.id, guild.name))
 
@@ -42,14 +45,14 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
         logger.error("[Discord] {}".format(e))
 
 
+# handles kicking and leaving of users
 @bot.event
 async def on_member_remove(user: Union[discord.User, discord.Member]):
-    # handles kicking and leaving of users
+    # ignore bots
     if user.bot:
-        # ignore bots
         return
+    # ignore users that are not verified
     if not VERIFIED_ROLE in user._roles:
-        # ignore users that are not verified
         return
     logger.info("[Discord] User {}#{} (`{}`) was removed from {}".format(user.name, user.discriminator, user.id, user.guild.name))
 
@@ -65,32 +68,31 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
         logger.error("[Discord] {}".format(e))
 
 
+# handles role changes of users
 @bot.event
 async def on_member_update(old: discord.Member, new: discord.Member):
-    # handles role changes of users
     if old.bot:
         return
     if old.roles == new.roles:
         return
 
+    # checks if the verified role was removed from a user
     if VERIFIED_ROLE not in new._roles:
-        # for when a user is unverified
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(new.id, e))
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was unverified, their account has been disabled.".format(new.name, new.discriminator, new.id))
-        return
-    elif VERIFIED_ROLE in new._roles and SUS_ROLE in old._roles:
-        # for when a user is no longer sus
+
+    # checks uf the verified role was given to a user
+    if VERIFIED_ROLE in new._roles:
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.error("[Discord] HTTPException while trying to enable user {}: {}".format(new.id, e))
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was verified, their account has been enabled.".format(new.name, new.discriminator, new.id))
-        return
 
 
 @bot.event
