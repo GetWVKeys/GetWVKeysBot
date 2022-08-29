@@ -1,20 +1,16 @@
 import functools
 from http.client import HTTPException
 from typing import Callable, Union
+
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, SUS_ROLE, VERIFIED_ROLE
-from getwvkeysbot.utils import construct_logger
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
-
+from getwvkeysbot.shared import bot
+from getwvkeysbot.utils import construct_logger
 
 logger = construct_logger()
-
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
 
 @bot.event

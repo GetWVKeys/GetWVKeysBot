@@ -1,11 +1,13 @@
-from enum import Enum
 import json
 import logging
 import random
+from enum import Enum
+
+import discord
+
 import redis
-
-from getwvkeysbot.config import REDIS_URI
-
+from getwvkeysbot.config import GUILD_ID, INTERROGATION_ROOM_CHANNEL_ID, MODERATOR_ROLE, QUARANTINE_LOG_CHANNEL_ID, REDIS_URI, SUS_ROLE, VERIFIED_ROLE
+from getwvkeysbot.shared import bot
 
 logger = logging.getLogger(__name__)
 
@@ -25,29 +27,58 @@ class OPCode(Enum):
 
 
 redis_cli = redis.Redis.from_url(REDIS_URI, decode_responses=True, encoding="utf8")
-
 p = redis_cli.pubsub(ignore_subscribe_messages=True)
 
 
-# def redis_message_handler(msg):
-#     try:
-#         data = json.loads(msg.get("data"))
-#         op = data.get("op")
-#         d = data.get("d")
+async def quarantine(d):
+    user_id = d["user_id"]
+    url = d["url"]
+    buildinfo = d["buildinfo"]
+    pssh = d["pssh"]
+    reason = d["reason"]
 
-#         if not op in OPCode:
-#             r = {"op": -1, "d": "Invalid OP code"}
-#             redis_cli.publish("api", json.dumps(r))
-#             return
+    await bot.wait_until_ready()
+    log_channel = await bot.fetch_channel(QUARANTINE_LOG_CHANNEL_ID)
+    thread_channel = await bot.fetch_channel(INTERROGATION_ROOM_CHANNEL_ID)
+    guild = bot.get_guild(GUILD_ID)
+    member = guild.get_member(int(user_id))
 
-#         print("Recieved OP Code {}".format(op))
+    if not member:
+        return print("failed to get member, probably left")
+    await member.add_roles(discord.utils.get(member.guild.roles, id=SUS_ROLE), reason="Auto Quarantine")
+    await member.remove_roles(discord.utils.get(member.guild.roles, id=VERIFIED_ROLE), reason="Auto Quarantine")
 
-#     except json.JSONDecodeError as e:
-#         print(e)
+    embed = discord.Embed(title="⚠️ User Quarantined", color=discord.Color.red(), description="A User has been automatically quarantined.")
+    embed.add_field(name="User", value=f"{member.mention} (`{member.id}`)", inline=False)
+    embed.add_field(name="URL", value=url, inline=False)
+    embed.add_field(name="BuildInfo", value=buildinfo, inline=False)
+    embed.add_field(name="PSSH", value=pssh, inline=False)
+    embed.add_field(name="Reason", value=reason, inline=False)
+    await log_channel.send(embed=embed)
+
+    thread = await thread_channel.create_thread(name=f"quarantine-{user_id}", type=discord.ChannelType.private_thread, reason="Auto Quarantine", invitable=False)
+    embed2 = discord.Embed(title="⚠️ User Quarantined", color=discord.Color.red(), description="You have been automatically quarantined. Your account has been disabled and staff have been notified.")
+    embed2.add_field(name="Reason", value=reason, inline=False)
+    await thread.send(embed=embed2, allowed_mentions=discord.AllowedMentions(roles=True), content=f"<@&{MODERATOR_ROLE}> {member.mention}")
 
 
-# p.subscribe(**{"bot": redis_message_handler})
-# redis_thread = p.run_in_thread(daemon=True)
+def redis_message_handler(msg):
+    try:
+        data = json.loads(msg.get("data"))
+        op = data.get("op")
+        d = data.get("d")
+
+        if op == OPCode.QUARANTINE.value:
+            bot.loop.create_task(quarantine(d))
+        else:
+            logger.warn("Unknown opcode: {}".format(op))
+
+    except json.JSONDecodeError as e:
+        logger.exception("Error parsing json", e)
+
+
+p.subscribe(**{"bot": redis_message_handler})
+redis_thread = p.run_in_thread(daemon=True)
 
 
 def make_api_request(action: OPCode, data={}):
