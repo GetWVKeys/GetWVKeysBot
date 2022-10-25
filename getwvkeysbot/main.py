@@ -134,7 +134,7 @@ async def sync(ctx: commands.Context):
     # only allow admins to use command
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
         return await ctx.reply("You're not elite enough, try harder.")
-    m = await ctx.send("Syncing the banned users with the database might take a while. Please be patient.")
+    m = await ctx.reply("Syncing the banned users with the database might take a while. Please be patient.")
     # sync the banned users with the database
     try:
         banned_users = [entry async for entry in ctx.guild.bans()]
@@ -170,7 +170,7 @@ async def key_count(ctx):
 async def key_search(ctx: commands.Context, query):
     if len(query) < 32:
         return await ctx.reply("Sorry, your query is not valid.")
-    m = await ctx.send(content="Searching...")
+    m = await ctx.reply(content="Searching...")
     try:
         results = await _make_api_request(OPCode.SEARCH, {"query": query})
         if not results:
