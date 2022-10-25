@@ -279,10 +279,10 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
         return await ctx.reply("You're not elite enough, try harder.")
 
-    if action not in FlagAction:
+    if action not in FlagAction._member_names_:
         return await ctx.reply("Invalid action! Valid actions are ``add``, ``remove``")
 
-    if flag not in UserFlags:
+    if flag not in UserFlags._member_names_:
         names = []
         for name in UserFlags._member_names_:
             names.append(f"``{name}``")
