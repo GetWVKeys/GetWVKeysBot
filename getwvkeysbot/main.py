@@ -1,13 +1,13 @@
 import functools
 from http.client import HTTPException
 from typing import Callable, Union
+
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, SUS_ROLE, VERIFIED_ROLE
-from getwvkeysbot.utils import construct_logger
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
-
+from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
 logger = construct_logger()
 
@@ -259,6 +259,54 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
     except Exception as e:
         logger.error("[Discord] {}".format(e))
         await ctx.reply("An error occurred while resetting user API Key: {}".format(e))
+
+
+@bot.command(hidden=True, help="Lists user flags", name="flags")
+async def list_flags(ctx: commands.Context):
+    names = []
+    for name in UserFlags._member_names_:
+        names.append(f"``{name}``")
+
+    await ctx.reply(f"Valid user flags:\n{', '.join(names)}")
+
+
+@bot.command(hidden=True, help="Update a users flags")
+async def update_flags(ctx: commands.Context, user: discord.User, action: str, flag: str):
+    flag = flag.upper()
+    action = action.upper()
+
+    # only allow admins to use command
+    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
+        return await ctx.reply("You're not elite enough, try harder.")
+
+    if action not in FlagAction:
+        return await ctx.reply("Invalid action! Valid actions are ``add``, ``remove``")
+
+    if flag not in UserFlags:
+        names = []
+        for name in UserFlags._member_names_:
+            names.append(f"``{name}``")
+        return await ctx.reply(f"Invalid User Flag! Valid flags are {', '.join(names)}")
+
+    flag_value = UserFlags[flag].value
+    action_value = FlagAction[action].value
+
+    try:
+        log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
+        try:
+            await _make_api_request(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": UserFlags[flag_value].value})
+        except HTTPException as e:
+            logger.error("[Discord] HTTPException while trying to update user permissions for {}: {}".format(user.id, e))
+            return await ctx.reply.send("An error occurred while trying to permission_action for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+        await log_channel.send(
+            "Permissions for {}#{} (`{}`) were updated by {}#{} (`{}`). {} {}".format(
+                user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id, action_value, flag_value
+            )
+        )
+        await ctx.reply("Permissions for {}#{} (`{}`) were updated.".format(user.name, user.discriminator, user.id))
+    except Exception as e:
+        logger.error("[Discord] {}".format(e))
+        await ctx.reply("An error occurred while updating user permissions: {}".format(e))
 
 
 async def _make_api_request(action: OPCode, data={}):

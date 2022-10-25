@@ -1,10 +1,26 @@
 import logging
 import logging.handlers
+from enum import Enum
+
 from coloredlogs import ColoredFormatter
 
 from getwvkeysbot.config import LOG_DATE_FORMAT, LOG_FILE_PATH, LOG_FORMAT, LOG_LEVEL
 
 logger = logging.getLogger(__name__)
+
+
+class UserFlags(Enum):
+    ADMIN = 1 << 0
+    BETA_TESTER = 1 << 1
+    VINETRIMMER = 1 << 2
+    KEY_ADDING = 1 << 3
+    SUSPENDED = 1 << 4
+    BLACKLIST_EXEMPT = 1 << 5
+
+
+class FlagAction(Enum):
+    ADD = "add"
+    REMOVE = "remove"
 
 
 def construct_logger():
