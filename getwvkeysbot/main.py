@@ -5,7 +5,9 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
+from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
+                                 BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID,
+                                 VERIFIED_ROLE)
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -38,11 +40,11 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(user.id, e))
+            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`) from the database. <@&975780356970123265>".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was banned, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
 
 
 # handles kicking and leaving of users
@@ -61,11 +63,11 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(user.id, e))
+            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was removed, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
 
 
 # handles role changes of users
@@ -81,7 +83,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": new.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(new.id, e))
+            logger.exception("[Discord] HTTPException while trying to disable user {}".format(new.id), e)
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was unverified, their account has been disabled.".format(new.name, new.discriminator, new.id))
 
@@ -90,7 +92,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": new.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to enable user {}: {}".format(new.id, e))
+            logger.exception("[Discord] HTTPException while trying to enable user {}: {}".format(new.id), e)
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was verified, their account has been enabled.".format(new.name, new.discriminator, new.id))
 
@@ -112,15 +114,14 @@ async def on_command_error(ctx: commands.Context, e: Exception):
         await ctx.reply("You are on cooldown. Please wait {} seconds before using this command again.".format(round(e.retry_after)))
         return
     if isinstance(e, commands.CommandInvokeError):
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while executing the command. Please try again later.")
         return
     if isinstance(e, commands.CommandError):
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while executing the command. Please try again later.")
         return
-    logger.error("[Discord] An error occurred while executing the command {}".format(ctx.command.name))
-    logger.error("[Discord] {}".format(e))
+    logger.exception("[Discord] An error occurred while executing the command {}".format(ctx.command.name), e)
 
 
 @bot.command(help="Pong!")
@@ -213,12 +214,12 @@ async def disable_user(ctx: commands.Context, user: discord.User):
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to disable user {}: {}".format(user.id, e))
+            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await ctx.reply("An error occurred while trying to disable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was disabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while disabling user: {}".format(e))
 
 
@@ -232,12 +233,12 @@ async def enable_user(ctx: commands.Context, user: discord.User):
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": user.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to enable user {}: {}".format(user.id, e))
+            logger.exception("[Discord] HTTPException while trying to enable user {}".format(user.id), e)
             return await ctx.reply.send("An error occurred while trying to enable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was enabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was enabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while enabling user: {}".format(e))
 
 
@@ -252,12 +253,12 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
         try:
             await _make_api_request(OPCode.RESET_API_KEY, {"user_id": user.id})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to reset API Key for {}: {}".format(user.id, e))
+            logger.exception("[Discord] HTTPException while trying to reset API Key for {}".format(user.id), e)
             return await ctx.reply.send("An error occurred while trying to reset API Key for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("API Key for {}#{} (`{}`) was reset by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("API Key for {}#{} (`{}`) was reset.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while resetting user API Key: {}".format(e))
 
 
@@ -294,10 +295,10 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": UserFlags[flag_value].value})
+            await _make_api_request(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": flag_value})
         except HTTPException as e:
-            logger.error("[Discord] HTTPException while trying to update user permissions for {}: {}".format(user.id, e))
-            return await ctx.reply.send("An error occurred while trying to permission_action for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+            logger.exception("[Discord] HTTPException while trying to update user permissions for {}".format(user.id), e)
+            return await ctx.reply.send("An error occurred while trying to update permissions for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send(
             "Permissions for {}#{} (`{}`) were updated by {}#{} (`{}`). {} {}".format(
                 user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id, action_value, flag_value
@@ -305,7 +306,7 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
         )
         await ctx.reply("Permissions for {}#{} (`{}`) were updated.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.error("[Discord] {}".format(e))
+        logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while updating user permissions: {}".format(e))
 
 
