@@ -5,9 +5,7 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
-                                 BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID,
-                                 VERIFIED_ROLE)
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -21,6 +19,10 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
 @bot.event
 async def on_ready():
+    if IS_DEVELOPMENT:
+        logger.info("Development mode is enabled, syncing commands to dev server...")
+        bot.tree.copy_global_to(guild=discord.Object(id=DEVELOPMENT_GUILD))
+        await bot.tree.sync(guild=discord.Object(id=DEVELOPMENT_GUILD))
     logger.info("[Discord] Logged in as {}#{}".format(bot.user.name, bot.user.discriminator))
 
 
@@ -124,12 +126,19 @@ async def on_command_error(ctx: commands.Context, e: Exception):
     logger.exception("[Discord] An error occurred while executing the command {}".format(ctx.command.name), e)
 
 
-@bot.command(help="Pong!")
-async def ping(ctx):
+@bot.command(help="Syncs commands", hidden=True)
+@commands.is_owner()
+async def sync(ctx: commands.Context):
+    await bot.tree.sync()
+    await ctx.reply("Synced commands.")
+
+
+@bot.hybrid_command(help="Pong!")
+async def ping(ctx: commands.Context):
     await ctx.reply(f"Pong! {round(bot.latency * 1000)}ms")
 
 
-@bot.command(hidden=True, help="Sync the guild bans with the database. This will disable users that are banned from the guild.")
+@bot.hybrid_command(hidden=True, help="Sync the guild bans with the database. This will disable users that are banned from the guild.")
 @commands.cooldown(1, 3600, commands.BucketType.guild)
 async def sync(ctx: commands.Context):
     # only allow admins to use command
@@ -146,7 +155,7 @@ async def sync(ctx: commands.Context):
         await m.reply(content="An error occurred while syncing the guild bans: {}".format(e))
 
 
-@bot.command(name="usercount", help="Get the number of users that have registered on the site.")
+@bot.hybrid_command(name="usercount", help="Get the number of users that have registered on the site.")
 async def user_count(ctx: commands.Context):
     try:
         await ctx.defer()
@@ -157,8 +166,8 @@ async def user_count(ctx: commands.Context):
         await ctx.reply("An error occurred while fetching the user count: {}".format(e))
 
 
-@bot.command(name="keycount", help="Get the number of cached keys in the database.")
-async def key_count(ctx):
+@bot.hybrid_command(name="keycount", help="Get the number of cached keys in the database.")
+async def key_count(ctx: commands.Context):
     try:
         count = await _make_api_request(OPCode.KEY_COUNT)
         await ctx.reply("There are currently {} keys in the database.".format(count))
@@ -167,8 +176,8 @@ async def key_count(ctx):
         await ctx.reply("An error occurred while fetching the key count: {}".format(e))
 
 
-@bot.command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
-async def key_search(ctx: commands.Context, query):
+@bot.hybrid_command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
+async def key_search(ctx: commands.Context, query: str):
     if len(query) < 32:
         return await ctx.reply("Sorry, your query is not valid.")
     m = await ctx.reply(content="Searching...")
@@ -204,7 +213,7 @@ async def key_search(ctx: commands.Context, query):
         await m.edit(content="An error occurred while searching: {}".format(e))
 
 
-@bot.command(hidden=True, help="Disable a user account")
+@bot.hybrid_command(hidden=True, help="Disable a user account")
 async def disable_user(ctx: commands.Context, user: discord.User):
     # only allow admins to use command
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
@@ -223,7 +232,7 @@ async def disable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("An error occurred while disabling user: {}".format(e))
 
 
-@bot.command(hidden=True, help="Enable a user account")
+@bot.hybrid_command(hidden=True, help="Enable a user account")
 async def enable_user(ctx: commands.Context, user: discord.User):
     # only allow admins to use command
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
@@ -242,7 +251,7 @@ async def enable_user(ctx: commands.Context, user: discord.User):
         await ctx.reply("An error occurred while enabling user: {}".format(e))
 
 
-@bot.command(hidden=True, help="Reset a users API Key")
+@bot.hybrid_command(hidden=True, help="Reset a users API Key")
 # TODO: limit this to 2 times per day
 async def reset_api_key(ctx: commands.Context, user: discord.User):
     # only allow admins to use command
@@ -262,7 +271,7 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
         await ctx.reply("An error occurred while resetting user API Key: {}".format(e))
 
 
-@bot.command(hidden=True, help="Lists user flags", name="flags")
+@bot.hybrid_command(hidden=True, help="Lists user flags", name="flags")
 async def list_flags(ctx: commands.Context):
     names = []
     for name in UserFlags._member_names_:
@@ -271,7 +280,7 @@ async def list_flags(ctx: commands.Context):
     await ctx.reply(f"Valid user flags:\n{', '.join(names)}")
 
 
-@bot.command(hidden=True, help="Update a users flags")
+@bot.hybrid_command(hidden=True, help="Update a users flags")
 async def update_flags(ctx: commands.Context, user: discord.User, action: str, flag: str):
     flag = flag.upper()
     action = action.upper()

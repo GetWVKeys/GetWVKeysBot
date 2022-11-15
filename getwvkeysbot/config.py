@@ -2,8 +2,8 @@ import logging
 import os
 import pathlib
 import time
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 IS_DEVELOPMENT = os.environ.get("DEVELOPMENT", False)
 
@@ -21,6 +21,7 @@ ADMIN_USERS = [213247101314924545, 756153425682497536]
 VERIFIED_ROLE = 970332150891155607
 SUS_ROLE = 981080014722301952
 ADMIN_ROLES = [994099299082309682, 979052545957842954]
+DEVELOPMENT_GUILD = 820832976304472085
 
 # Environment settings
 BOT_PREFIX = os.environ["PREFIX"]
