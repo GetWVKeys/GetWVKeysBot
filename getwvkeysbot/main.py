@@ -128,7 +128,7 @@ async def on_command_error(ctx: commands.Context, e: Exception):
 
 @bot.command(help="Syncs commands", hidden=True)
 @commands.is_owner()
-async def sync(ctx: commands.Context):
+async def synccommands(ctx: commands.Context):
     await bot.tree.sync()
     await ctx.reply("Synced commands.")
 
