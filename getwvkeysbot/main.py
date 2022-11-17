@@ -1,28 +1,29 @@
-import functools
 from http.client import HTTPException
-from typing import Callable, Union
+from typing import Union
 
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
-from getwvkeysbot.redis import OPCode, make_api_request
-from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
-
-logger = construct_logger()
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, RABBIT_URI, VERIFIED_ROLE
+from getwvkeysbot.util.rabbit import RpcClient
+from getwvkeysbot.utils import FlagAction, OPCode, UserFlags, logger
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
+if not RABBIT_URI:
+    logger.warn("RabbitMQ is not configured. Some features will not work.")
+else:
+    rpc_client = RpcClient("rpc_bot_queue_development")
 
 
 @bot.event
 async def on_ready():
-    if IS_DEVELOPMENT:
-        logger.info("Development mode is enabled, syncing commands to dev server...")
-        bot.tree.copy_global_to(guild=discord.Object(id=DEVELOPMENT_GUILD))
-        await bot.tree.sync(guild=discord.Object(id=DEVELOPMENT_GUILD))
+    # if IS_DEVELOPMENT:
+    #     logger.info("Development mode is enabled, syncing commands to dev server...")
+    #     bot.tree.copy_global_to(guild=discord.Object(id=DEVELOPMENT_GUILD))
+    #     await bot.tree.sync(guild=discord.Object(id=DEVELOPMENT_GUILD)))
     logger.info("[Discord] Logged in as {}#{}".format(bot.user.name, bot.user.discriminator))
 
 
@@ -40,7 +41,7 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
+            await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`) from the database. <@&975780356970123265>".format(user.name, user.discriminator, user.id))
@@ -63,7 +64,7 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
+            await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(user.name, user.discriminator, user.id))
@@ -83,7 +84,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
     # checks if the verified role was removed from a user
     if VERIFIED_ROLE not in new._roles:
         try:
-            await _make_api_request(OPCode.DISABLE_USER, {"user_id": new.id})
+            await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(new.id), e)
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
@@ -92,7 +93,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
     # checks uf the verified role was given to a user
     if VERIFIED_ROLE in new._roles:
         try:
-            await _make_api_request(OPCode.ENABLE_USER, {"user_id": new.id})
+            await rpc_client.publish_packet(OPCode.ENABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to enable user {}: {}".format(new.id), e)
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
@@ -148,7 +149,7 @@ async def sync(ctx: commands.Context):
     # sync the banned users with the database
     try:
         banned_users = [entry async for entry in ctx.guild.bans()]
-        await _make_api_request(OPCode.DISABLE_USER_BULK, {"user_ids": [ban.user.id for ban in banned_users]})
+        await rpc_client.publish_packet(OPCode.DISABLE_USER_BULK, {"user_ids": [ban.user.id for ban in banned_users]})
         await m.reply("{} guild bans have been synced with the database.".format(len(banned_users)))
     except Exception as e:
         logger.exception(e)
@@ -159,7 +160,7 @@ async def sync(ctx: commands.Context):
 async def user_count(ctx: commands.Context):
     try:
         await ctx.defer()
-        count = await _make_api_request(OPCode.USER_COUNT)
+        count = await rpc_client.publish_packet(OPCode.USER_COUNT)
         await ctx.reply("There are currently {} users in the database.".format(count))
     except Exception as e:
         logger.exception(e)
@@ -169,7 +170,7 @@ async def user_count(ctx: commands.Context):
 @bot.hybrid_command(name="keycount", help="Get the number of cached keys in the database.")
 async def key_count(ctx: commands.Context):
     try:
-        count = await _make_api_request(OPCode.KEY_COUNT)
+        count = await rpc_client.publish_packet(OPCode.KEY_COUNT)
         await ctx.reply("There are currently {} keys in the database.".format(count))
     except Exception as e:
         logger.exception(e)
@@ -182,7 +183,7 @@ async def key_search(ctx: commands.Context, query: str):
         return await ctx.reply("Sorry, your query is not valid.")
     m = await ctx.reply(content="Searching...")
     try:
-        results = await _make_api_request(OPCode.SEARCH, {"query": query})
+        results = await rpc_client.publish_packet(OPCode.SEARCH, {"query": query})
         if not results:
             return await m.edit(content="The response was null. Please report this to the developers.")
         kid = results.get("kid")
@@ -221,7 +222,7 @@ async def disable_user(ctx: commands.Context, user: discord.User):
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
+            await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
             return await ctx.reply("An error occurred while trying to disable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
@@ -240,7 +241,7 @@ async def enable_user(ctx: commands.Context, user: discord.User):
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.ENABLE_USER, {"user_id": user.id})
+            await rpc_client.publish_packet(OPCode.ENABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to enable user {}".format(user.id), e)
             return await ctx.reply.send("An error occurred while trying to enable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
@@ -260,7 +261,7 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.RESET_API_KEY, {"user_id": user.id})
+            await rpc_client.publish_packet(OPCode.RESET_API_KEY, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to reset API Key for {}".format(user.id), e)
             return await ctx.reply.send("An error occurred while trying to reset API Key for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
@@ -304,7 +305,7 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
-            await _make_api_request(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": flag_value})
+            await rpc_client.publish_packet(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": flag_value})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to update user permissions for {}".format(user.id), e)
             return await ctx.reply.send("An error occurred while trying to update permissions for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
@@ -317,15 +318,6 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
     except Exception as e:
         logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while updating user permissions: {}".format(e))
-
-
-async def _make_api_request(action: OPCode, data={}):
-    return await run_blocking(make_api_request, action, data)
-
-
-async def run_blocking(blocking_func: Callable, *args, **kwargs):
-    func = functools.partial(blocking_func, *args, **kwargs)
-    return await bot.loop.run_in_executor(None, func)
 
 
 def main():

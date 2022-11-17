@@ -6,6 +6,7 @@ import time
 from dotenv import load_dotenv
 
 IS_DEVELOPMENT = os.environ.get("DEVELOPMENT", False)
+IS_STAGING = os.environ.get("STAGING", False)
 
 load_dotenv(".env.dev" if IS_DEVELOPMENT else ".env")
 
@@ -28,4 +29,4 @@ BOT_PREFIX = os.environ["PREFIX"]
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CLIENT_ID = os.environ["CLIENT_ID"]
 CLIENT_SECRET = os.environ["CLIENT_SECRET"]
-REDIS_URI = os.environ["REDIS_URI"]
+RABBIT_URI = os.environ["RABBIT_URI"]
