@@ -23,11 +23,12 @@ import time
 import uuid
 from time import sleep
 
+import discord
 import pika
 from pika import channel, spec
 
 from getwvkeysbot.config import RABBIT_URI
-from getwvkeysbot.utils import OPCode, logger
+from getwvkeysbot.utils import OPCode, logger, quarantine
 
 
 class RpcClient(object):
@@ -36,10 +37,11 @@ class RpcClient(object):
     internal_lock = threading.Lock()
     queue = {}
 
-    def __init__(self, rpc_queue):
+    def __init__(self, rpc_queue: str, bot: discord.Client):
         logger.info("[RabbitMQ] Initializing RPC client")
 
         self.rpc_queue = rpc_queue
+        self.bot = bot
         self.connection = pika.BlockingConnection(parameters=pika.URLParameters(RABBIT_URI))
         self.channel = self.connection.channel()
         result = self.channel.queue_declare(queue=self.rpc_queue, exclusive=True)
@@ -56,8 +58,23 @@ class RpcClient(object):
                 sleep(0.1)
 
     def _on_response(self, ch: channel.Channel, method, props: spec.BasicProperties, body):
-        self.queue[props.correlation_id] = body
-        # TODO: process global incoming messages
+        if props.correlation_id in self.queue:
+            self.queue[props.correlation_id] = body
+            return
+
+        # process a global message, aka not a response to a message
+        try:
+            data = json.loads(body.decode("utf8"))
+            op = data["op"]
+            d = data["d"]
+
+            if op == OPCode.QUARANTINE.value:
+                self.bot.loop.create_task(quarantine(self.bot, d))
+            else:
+                logger.warning("[RabbitMQ] Unknown OP code: %s", op)
+        except json.JSONDecodeError:
+            logger.warning("[RabbitMQ] Invalid JSON: %s", body.decode("utf8"))
+            self.publish_error(ch, props, "Invalid JSON")
 
     def send_request(self, payload):
         corr_id = str(uuid.uuid4())

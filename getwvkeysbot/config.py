@@ -17,12 +17,16 @@ LOG_DATE_FORMAT = "%I:%M:%S"
 LOG_FILE_PATH = pathlib.Path(os.getcwd(), "logs", f"{time.strftime('%Y-%m-%d')}.log")
 
 # Channels and roles
-LOG_CHANNEL_ID = 971335086609936384
-ADMIN_USERS = [213247101314924545, 756153425682497536]
-VERIFIED_ROLE = 970332150891155607
-SUS_ROLE = 981080014722301952
-ADMIN_ROLES = [994099299082309682, 979052545957842954]
-DEVELOPMENT_GUILD = 820832976304472085
+LOG_CHANNEL_ID = int(os.environ["LOG_CHANNEL_ID"])
+ADMIN_USERS = [int(x) for x in os.environ["ADMIN_USERS"].split(",")]
+VERIFIED_ROLE = int(os.environ["VERIFIED_ROLE"])
+SUS_ROLE = int(os.environ["SUS_ROLE"])
+ADMIN_ROLES = [int(x) for x in os.environ["ADMIN_ROLES"].split(",")]
+QUARANTINE_LOG_CHANNEL_ID = int(os.environ["QUARANTINE_LOG_CHANNEL_ID"])
+INTERROGATION_ROOM_CHANNEL_ID = int(os.environ["INTERROGATION_ROOM_CHANNEL_ID"])
+MODERATOR_ROLE = int(os.environ["MODERATOR_ROLE"])
+GUILD_ID = int(os.environ["GUILD_ID"])
+
 
 # Environment settings
 BOT_PREFIX = os.environ["PREFIX"]

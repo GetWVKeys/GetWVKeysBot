@@ -4,7 +4,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, IS_DEVELOPMENT, LOG_CHANNEL_ID, RABBIT_URI, VERIFIED_ROLE
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, GUILD_ID, IS_DEVELOPMENT, LOG_CHANNEL_ID, RABBIT_URI, VERIFIED_ROLE
 from getwvkeysbot.util.rabbit import RpcClient
 from getwvkeysbot.utils import FlagAction, OPCode, UserFlags, logger
 
@@ -15,7 +15,7 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 if not RABBIT_URI:
     logger.warn("RabbitMQ is not configured. Some features will not work.")
 else:
-    rpc_client = RpcClient("rpc_bot_queue_development")
+    rpc_client = RpcClient("rpc_bot_queue_development", bot)
 
 
 @bot.event
@@ -30,12 +30,10 @@ async def on_ready():
 # handles banning of users
 @bot.event
 async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.Member]):
-    # ignore bots
-    if user.bot:
+    # ignore bots, unverified users, and guilds that aren't the main server
+    if user.bot or not VERIFIED_ROLE in user._roles or not guild.id == GUILD_ID:
         return
-    # ignore users that are not verified
-    if not VERIFIED_ROLE in user._roles:
-        return
+
     logger.info("[Discord] User {}#{} (`{}`) was banned from {}".format(user.name, user.discriminator, user.id, guild.name))
 
     try:
@@ -53,12 +51,10 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
 # handles kicking and leaving of users
 @bot.event
 async def on_member_remove(user: Union[discord.User, discord.Member]):
-    # ignore bots
-    if user.bot:
+    # ignore bots, unverified users, and guilds that aren't the main server
+    if user.bot or not VERIFIED_ROLE in user._roles or not user.guild.id == GUILD_ID:
         return
-    # ignore users that are not verified
-    if not VERIFIED_ROLE in user._roles:
-        return
+
     logger.info("[Discord] User {}#{} (`{}`) was removed from {}".format(user.name, user.discriminator, user.id, user.guild.name))
 
     try:
@@ -76,9 +72,8 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
 # handles role changes of users
 @bot.event
 async def on_member_update(old: discord.Member, new: discord.Member):
-    if old.bot:
-        return
-    if old.roles == new.roles:
+    # ignore bots, changes that dont invole roles, and guilds that aren't the main server
+    if old.bot or old.roles == new.roles or not old.guild.id == GUILD_ID:
         return
 
     # checks if the verified role was removed from a user
