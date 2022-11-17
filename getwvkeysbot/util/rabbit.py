@@ -105,7 +105,7 @@ class RpcClient(object):
                 raise Exception("Timeout")
         msg = self.queue[corr_id]
         msg = msg.decode("utf-8")
-        self.logger.info("[RabbitMQ] Got response: %s", msg)
+        logger.info("[RabbitMQ] Got response: %s", msg)
         data = ast.literal_eval(msg)
         op = data.get("op")
         d = data.get("d")
