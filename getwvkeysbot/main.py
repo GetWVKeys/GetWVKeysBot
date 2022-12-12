@@ -5,7 +5,9 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, VERIFIED_ROLE
+from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
+                                 BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT,
+                                 LOG_CHANNEL_ID, VERIFIED_ROLE)
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -177,6 +179,7 @@ async def key_count(ctx: commands.Context):
 
 
 @bot.hybrid_command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
+@commands.has_role(VERIFIED_ROLE)
 async def key_search(ctx: commands.Context, query: str):
     if len(query) < 32:
         return await ctx.reply("Sorry, your query is not valid.")
@@ -273,6 +276,8 @@ async def reset_api_key(ctx: commands.Context, user: discord.User):
 
 @bot.hybrid_command(hidden=True, help="Lists user flags", name="flags")
 async def list_flags(ctx: commands.Context):
+    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
+        return await ctx.reply("You're not elite enough, try harder.")
     names = []
     for name in UserFlags._member_names_:
         names.append(f"``{name}``")
