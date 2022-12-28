@@ -325,21 +325,20 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 @bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
 async def pin_message_to_thread_channel(ctx: commands.Context, message_id: str):
-    if ctx.channel.type != discord.ChannelType.public_thread:
+    if ctx.message.channel.type != discord.ChannelType.public_thread:
         return await ctx.reply("This command can only be used in a thread channel.", ephemeral=True)
+    if ctx.message.channel.parent_id != SCRIPTS_CHANNEL_ID:
+        return await ctx.reply("This command can only be used in a script thread channel.", ephemeral=True)
+    if ctx.message.channel.owner_id != ctx.message.author.id:
+        return await ctx.reply("You can only pin messages to your own thread channel.", ephemeral=True)
 
-    if ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
-        return await ctx.reply("This command can only be used in the scripts channel.", ephemeral=True)
-
-    if ctx.channel.owner_id != ctx.author.id:
-        return await ctx.reply("You must be the owner of the thread to use this command.", ephemeral=True)
-
-    message = await ctx.channel.fetch_message(int(message_id))
-    if not message:
-        return await ctx.reply("Message not found.", ephemeral=True)
-
-    if message.channel.id != ctx.channel.id:
-        return await ctx.reply("Message must be in the same channel as the thread.", ephemeral=True)
+    message = await ctx.fetch_message(message_id)
+    if message is None:
+        return await ctx.reply("Invalid message ID.", ephemeral=True)
+    if message.channel.id != ctx.message.channel.id:
+        return await ctx.reply("Message is not in this thread channel.", ephemeral=True)
+    if message.author.id != ctx.message.author.id:
+        return await ctx.reply("You can only pin your own messages.", ephemeral=True)
 
     try:
         await message.pin()
