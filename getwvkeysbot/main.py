@@ -322,7 +322,7 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
         await ctx.reply("An error occurred while updating user permissions: {}".format(e))
 
 
-@bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
+@bot.hybrid_command(help="Pin a message to the thread. (for script developers)", name="pin")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
 async def pin_message_to_thread_channel(ctx: commands.Context, message_id: str):
     if ctx.message.channel.type != discord.ChannelType.public_thread:
