@@ -326,10 +326,10 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
 async def pin_message_to_thread_channel(ctx: commands.Context, msg: discord.Message):
     if ctx.channel.id != SCRIPTS_CHANNEL_ID:
-        raise commands.CheckFailure("This command can only be used in the scripts channel.")
+        return await ctx.reply("This command can only be used in the scripts channel.")
 
     if ctx.channel.owner_id != ctx.author.id:
-        raise commands.CheckFailure("You must be the owner of the thread to use this command.")
+        return await ctx.reply("You must be the owner of the thread to use this command.")
 
     try:
         await msg.pin()
