@@ -328,7 +328,10 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 @bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
 async def pin_message_to_thread_channel(ctx: commands.Context, message_id: int):
-    if ctx.channel.type != discord.ChannelType.public_thread and ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
+    if ctx.channel.type != discord.ChannelType.public_thread:
+        return await ctx.reply("This command can only be used in a thread channel.", ephemeral=True)
+        
+    if ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
         return await ctx.reply("This command can only be used in the scripts channel.", ephemeral=True)
 
     if ctx.channel.owner_id != ctx.author.id:
