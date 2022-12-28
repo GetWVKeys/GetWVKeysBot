@@ -68,6 +68,8 @@ class RpcClient(object):
             op = data["op"]
             d = data["d"]
 
+            print("OPCode {}; d: {}".format(op, json.dumps(d)))
+
             if op == OPCode.QUARANTINE.value:
                 self.bot.loop.create_task(quarantine(self.bot, d))
             else:
