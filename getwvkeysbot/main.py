@@ -324,19 +324,26 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 
 @bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
-async def pin_message_to_thread_channel(ctx: commands.Context, msg: discord.Message):
+async def pin_message_to_thread_channel(ctx: commands.Context, message_id: str):
     if ctx.channel.id != SCRIPTS_CHANNEL_ID:
-        return await ctx.reply("This command can only be used in the scripts channel.")
+        return await ctx.reply("This command can only be used in the scripts channel.", ephemeral=True)
 
     if ctx.channel.owner_id != ctx.author.id:
-        return await ctx.reply("You must be the owner of the thread to use this command.")
+        return await ctx.reply("You must be the owner of the thread to use this command.", ephemeral=True)
+
+    msg = await ctx.channel.fetch_message(message_id)
+    if msg is None:
+        return await ctx.reply("Message not found.", ephemeral=True)
+
+    if msg.channel.id != ctx.channel.id:
+        return await ctx.reply("Message must be in the same channel as the thread.", ephemeral=True)
 
     try:
         await msg.pin()
-        await ctx.reply("Message pinned.")
+        await ctx.reply("Message pinned.", ephemeral=True)
     except Exception as e:
         logger.exception("[Discord]", e)
-        await ctx.reply("An error occurred while pinning message: {}".format(e))
+        await ctx.reply("An error occurred while pinning message: {}".format(e), ephemeral=True)
 
 
 async def _make_api_request(action: OPCode, data={}):
