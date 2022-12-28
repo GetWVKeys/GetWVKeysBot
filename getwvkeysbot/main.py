@@ -104,24 +104,24 @@ async def on_command_error(ctx: commands.Context, e: Exception):
     if isinstance(e, commands.CommandNotFound):
         return
     if isinstance(e, commands.MissingRequiredArgument):
-        await ctx.reply("You are missing a required argument. Please check the command's syntax.")
+        await ctx.reply("You are missing a required argument. Please check the command's syntax.", ephemeral=True)
         return
     if isinstance(e, commands.BadArgument):
-        await ctx.reply("Please check the argument you provided. It is invalid.")
+        await ctx.reply("Please check the argument you provided. It is invalid.", ephemeral=True)
         return
     if isinstance(e, commands.CheckFailure):
-        await ctx.reply("You are not allowed to use this command.")
+        await ctx.reply("You are not allowed to use this command.", ephemeral=True)
         return
     if isinstance(e, commands.CommandOnCooldown):
-        await ctx.reply("You are on cooldown. Please wait {} seconds before using this command again.".format(round(e.retry_after)))
+        await ctx.reply("You are on cooldown. Please wait {} seconds before using this command again.".format(round(e.retry_after)), ephemeral=True)
         return
     if isinstance(e, commands.CommandInvokeError):
         logger.exception("[Discord]", e)
-        await ctx.reply("An error occurred while executing the command. Please try again later.")
+        await ctx.reply("An error occurred while executing the command. Please try again later.", ephemeral=True)
         return
     if isinstance(e, commands.CommandError):
         logger.exception("[Discord]", e)
-        await ctx.reply("An error occurred while executing the command. Please try again later.")
+        await ctx.reply("An error occurred while executing the command. Please try again later.", ephemeral=True)
         return
     logger.exception("[Discord] An error occurred while executing the command {}".format(ctx.command.name), e)
 
@@ -324,12 +324,16 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 
 @bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
-async def pin_message_to_thread_channel(ctx: commands.Context, message: discord.Message):
-    if "parent_id" in ctx.channel and ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
+async def pin_message_to_thread_channel(ctx: commands.Context, message_id: int):
+    if ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
         return await ctx.reply("This command can only be used in the scripts channel.", ephemeral=True)
 
-    if "owner_id" in ctx.channel and ctx.channel.owner_id != ctx.author.id:
+    if ctx.channel.owner_id != ctx.author.id:
         return await ctx.reply("You must be the owner of the thread to use this command.", ephemeral=True)
+
+    message = await ctx.channel.fetch_message(message_id)
+    if not message:
+        return await ctx.reply("Message not found.", ephemeral=True)
 
     if message.channel.id != ctx.channel.id:
         return await ctx.reply("Message must be in the same channel as the thread.", ephemeral=True)
