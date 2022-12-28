@@ -76,12 +76,15 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
 @bot.event
 async def on_member_update(old: discord.Member, new: discord.Member):
     if old.bot:
+        # ignore bots
         return
-    if old.roles == new.roles:
+
+    if old._roles == new._roles:
+        # ignore any updates that don't change roles
         return
 
     # checks if the verified role was removed from a user
-    if VERIFIED_ROLE not in new._roles:
+    if VERIFIED_ROLE not in new._roles and VERIFIED_ROLE in old._roles:
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": new.id})
         except HTTPException as e:
@@ -89,8 +92,8 @@ async def on_member_update(old: discord.Member, new: discord.Member):
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was unverified, their account has been disabled.".format(new.name, new.discriminator, new.id))
 
-    # checks uf the verified role was given to a user
-    if VERIFIED_ROLE in new._roles:
+    # checks if the verified role was given to a user
+    if VERIFIED_ROLE in new._roles and VERIFIED_ROLE not in old._roles:
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": new.id})
         except HTTPException as e:
