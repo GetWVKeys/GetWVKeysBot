@@ -5,10 +5,7 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
-                                 BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT,
-                                 LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID,
-                                 SCRIPTS_CHANNEL_ID, VERIFIED_ROLE)
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID, SCRIPTS_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -327,17 +324,17 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
 
 @bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
 @commands.has_role(SCRIPT_DEV_ROLE_ID)
-async def pin_message_to_thread_channel(ctx: commands.Context, message_id: int):
+async def pin_message_to_thread_channel(ctx: commands.Context, message_id: str):
     if ctx.channel.type != discord.ChannelType.public_thread:
         return await ctx.reply("This command can only be used in a thread channel.", ephemeral=True)
-        
+
     if ctx.channel.parent_id != SCRIPTS_CHANNEL_ID:
         return await ctx.reply("This command can only be used in the scripts channel.", ephemeral=True)
 
     if ctx.channel.owner_id != ctx.author.id:
         return await ctx.reply("You must be the owner of the thread to use this command.", ephemeral=True)
 
-    message = await ctx.channel.fetch_message(message_id)
+    message = await ctx.channel.fetch_message(int(message_id))
     if not message:
         return await ctx.reply("Message not found.", ephemeral=True)
 
