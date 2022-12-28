@@ -5,9 +5,7 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
-                                 BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT,
-                                 LOG_CHANNEL_ID, VERIFIED_ROLE)
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID, SCRIPTS_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -322,6 +320,23 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
     except Exception as e:
         logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while updating user permissions: {}".format(e))
+
+
+@bot.hybrid_command(help="Pin a message to the thread. (for script developers)")
+@commands.has_role(SCRIPT_DEV_ROLE_ID)
+async def pin_message_to_thread_channel(ctx: commands.Context, msg: discord.Message):
+    if ctx.channel.id != SCRIPTS_CHANNEL_ID:
+        raise commands.CheckFailure("This command can only be used in the scripts channel.")
+
+    if ctx.channel.owner_id != ctx.author.id:
+        raise commands.CheckFailure("You must be the owner of the thread to use this command.")
+
+    try:
+        await msg.pin()
+        await ctx.reply("Message pinned.")
+    except Exception as e:
+        logger.exception("[Discord]", e)
+        await ctx.reply("An error occurred while pinning message: {}".format(e))
 
 
 async def _make_api_request(action: OPCode, data={}):
