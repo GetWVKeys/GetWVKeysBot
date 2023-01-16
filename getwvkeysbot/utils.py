@@ -98,4 +98,4 @@ async def quarantine(bot: discord.Client, d: dict):
     thread = await thread_channel.create_thread(name=f"quarantine-{user_id}", type=discord.ChannelType.private_thread, reason="Auto Quarantine", invitable=False)
     embed2 = discord.Embed(title="⚠️ User Quarantined", color=discord.Color.red(), description="You have been automatically quarantined. Your account has been disabled and staff have been notified.")
     embed2.add_field(name="Reason", value=reason, inline=False)
-    await thread.send(embed=embed2, allowed_mentions=discord.AllowedMentions(roles=True), content=f"<@&{MODERATOR_ROLE}> {member.mention}")
+    await thread.send(embed=embed2, allowed_mentions=discord.AllowedMentions(roles=True, users=True), content=f"<@&{MODERATOR_ROLE}> {member.mention}")
