@@ -1,0 +1,49 @@
+###
+# General Configuration
+###
+[general]
+prefix = "wv!"
+admin_users = []
+guild_id = 
+
+###
+# Channel Configuration
+###
+[general.channels]
+logs = ""
+quarantine_logs = ""
+interrogation_room = ""
+
+###
+# Role Configuration
+###
+[general.roles]
+verified = ""
+sus = ""
+moderator = ""
+admin = []
+
+###
+# RabbitMQ Configuration
+###
+[rabbitmq]
+uri = "amqp://guest:guest@localhost:5672/%2F"
+
+###
+# Discord Configuration
+###
+[discord]
+client_id = ""
+client_secret = ""
+token = ""
+
+###
+# Logging Configuration
+###
+[logging]
+console_level = "INFO"
+file_level = "DEBUG"
+format = "[%(asctime)s] [%(name)s] [%(funcName)s:%(lineno)d] %(levelname)s: %(message)s"
+date_format = "%I:%M:%S"
+filename_format = "logs/%time%.log" # Relative to the root directory of the project
+filename_date_format = "%Y-%m-%d"

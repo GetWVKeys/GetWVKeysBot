@@ -1,36 +1,49 @@
-import logging
 import os
 import pathlib
 import time
 
-from dotenv import load_dotenv
+import toml
 
 IS_DEVELOPMENT = os.environ.get("DEVELOPMENT", False)
 IS_STAGING = os.environ.get("STAGING", False)
+config_filename = "config.dev.toml" if IS_DEVELOPMENT else "config.staging.toml" if IS_STAGING else "config.toml"
+config = toml.load(config_filename)
 
-load_dotenv(".env.dev" if IS_DEVELOPMENT else ".env")
+general = config["general"]
+channels = general["channels"]
+roles = general["roles"]
+rabbitmq = config["rabbitmq"]
+discord = config["discord"]
+logging_config = config["logging"]
 
-# Logging settings
-LOG_LEVEL = logging.DEBUG if IS_DEVELOPMENT else logging.INFO
-LOG_FORMAT = "[%(asctime)s] [%(name)s] [%(funcName)s:%(lineno)d] %(levelname)s: %(message)s"
-LOG_DATE_FORMAT = "%I:%M:%S"
-LOG_FILE_PATH = pathlib.Path(os.getcwd(), "logs", f"{time.strftime('%Y-%m-%d')}.log")
+# General Configuration Section
+BOT_PREFIX: str = general["prefix"]
+ADMIN_USERS: list[int] = general["admin_users"]
+GUILD_ID: int = general["guild_id"]
 
-# Channels and roles
-LOG_CHANNEL_ID = int(os.environ["LOG_CHANNEL_ID"])
-ADMIN_USERS = [int(x) for x in os.environ["ADMIN_USERS"].split(",")]
-VERIFIED_ROLE = int(os.environ["VERIFIED_ROLE"])
-SUS_ROLE = int(os.environ["SUS_ROLE"])
-ADMIN_ROLES = [int(x) for x in os.environ["ADMIN_ROLES"].split(",")]
-QUARANTINE_LOG_CHANNEL_ID = int(os.environ["QUARANTINE_LOG_CHANNEL_ID"])
-INTERROGATION_ROOM_CHANNEL_ID = int(os.environ["INTERROGATION_ROOM_CHANNEL_ID"])
-MODERATOR_ROLE = int(os.environ["MODERATOR_ROLE"])
-GUILD_ID = int(os.environ["GUILD_ID"])
+# Channel Configuration Section
+LOG_CHANNEL_ID: int = channels["logs"]
+QUARANTINE_LOG_CHANNEL_ID: int = channels["quarantine_logs"]
+INTERROGATION_ROOM_CHANNEL_ID: int = channels["interrogation_room"]
+
+# Role Configuration Section
+VERIFIED_ROLE: int = roles["verified"]
+SUS_ROLE: int = roles["sus"]
+MODERATOR_ROLE: int = roles["moderator"]
+ADMIN_ROLES: list[int] = roles["admin"]
+
+# Discord Configuration Section
+CLIENT_ID: str = discord["client_id"]
+CLIENT_SECRET: str = discord["client_secret"]
+BOT_TOKEN: str = discord["token"]
+
+# RabbitMQ Configuration Section
+RABBIT_URI: str = rabbitmq["uri"]
 
 
-# Environment settings
-BOT_PREFIX = os.environ["PREFIX"]
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-CLIENT_ID = os.environ["CLIENT_ID"]
-CLIENT_SECRET = os.environ["CLIENT_SECRET"]
-RABBIT_URI = os.environ["RABBIT_URI"]
+# Logging Configuration Section
+CONSOLE_LOG_LEVEL: str = logging_config["console_level"]
+FILE_LOG_LEVEL: str = logging_config["file_level"]
+LOG_FORMAT: str = logging_config["format"]
+LOG_DATE_FORMAT: str = logging_config["date_format"]
+LOG_FILE_PATH: pathlib.Path = pathlib.Path(os.getcwd(), logging_config["filename_format"].replace("%time%", time.strftime("%Y-%m-%d")))

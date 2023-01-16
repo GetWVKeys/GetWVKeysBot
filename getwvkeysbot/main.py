@@ -42,7 +42,7 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
             await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
-            return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`) from the database. <@&975780356970123265>".format(user.name, user.discriminator, user.id))
+            return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`) from the database.".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was banned, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.exception("[Discord]", e)
@@ -63,7 +63,7 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
             await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": user.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
-            return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(user.name, user.discriminator, user.id))
+            return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`).".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was removed, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
         logger.exception("[Discord]", e)
@@ -82,7 +82,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
             await rpc_client.publish_packet(OPCode.DISABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to disable user {}".format(new.id), e)
-            return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
+            return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`).".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was unverified, their account has been disabled.".format(new.name, new.discriminator, new.id))
 
     # checks uf the verified role was given to a user
@@ -91,7 +91,7 @@ async def on_member_update(old: discord.Member, new: discord.Member):
             await rpc_client.publish_packet(OPCode.ENABLE_USER, {"user_id": new.id})
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to enable user {}: {}".format(new.id), e)
-            return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
+            return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`).".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was verified, their account has been enabled.".format(new.name, new.discriminator, new.id))
 
 

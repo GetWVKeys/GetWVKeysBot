@@ -5,11 +5,19 @@ from enum import Enum
 import discord
 from coloredlogs import ColoredFormatter
 
-from getwvkeysbot.config import (GUILD_ID, INTERROGATION_ROOM_CHANNEL_ID,
-                                 LOG_DATE_FORMAT, LOG_FILE_PATH, LOG_FORMAT,
-                                 LOG_LEVEL, MODERATOR_ROLE,
-                                 QUARANTINE_LOG_CHANNEL_ID, SUS_ROLE,
-                                 VERIFIED_ROLE)
+from getwvkeysbot.config import (
+    CONSOLE_LOG_LEVEL,
+    FILE_LOG_LEVEL,
+    GUILD_ID,
+    INTERROGATION_ROOM_CHANNEL_ID,
+    LOG_DATE_FORMAT,
+    LOG_FILE_PATH,
+    LOG_FORMAT,
+    MODERATOR_ROLE,
+    QUARANTINE_LOG_CHANNEL_ID,
+    SUS_ROLE,
+    VERIFIED_ROLE,
+)
 
 LOG_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
 # setup handlers
@@ -19,7 +27,7 @@ console_formatter = ColoredFormatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 file_formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 # create a handler for console logging
 stream = logging.StreamHandler()
-stream.setLevel(LOG_LEVEL)
+stream.setLevel(CONSOLE_LOG_LEVEL)
 stream.setFormatter(console_formatter)
 # create a handler for file logging, 5 mb max size, with 5 backup files
 file_handler = logging.handlers.RotatingFileHandler(LOG_FILE_PATH, maxBytes=(1024 * 1024) * 5, backupCount=5)
@@ -27,7 +35,7 @@ file_handler.setFormatter(file_formatter)
 
 # construct the logger
 logger = logging.getLogger(__name__)
-logger.setLevel(LOG_LEVEL)
+logger.setLevel(FILE_LOG_LEVEL)
 logger.addHandler(stream)
 logger.addHandler(file_handler)
 
