@@ -3,25 +3,25 @@
 ###
 [general]
 prefix = "wv!"
-admin_users = []
+admin_users = [123,123,123]
 guild_id = 
 
 ###
 # Channel Configuration
 ###
 [general.channels]
-logs = ""
-quarantine_logs = ""
-interrogation_room = ""
+logs = 123
+quarantine_logs = 123
+interrogation_room = 123
 
 ###
 # Role Configuration
 ###
 [general.roles]
-verified = ""
-sus = ""
-moderator = ""
-admin = []
+verified = 123
+sus = 123
+moderator = 123
+admin = [123,123,123]
 
 ###
 # RabbitMQ Configuration
