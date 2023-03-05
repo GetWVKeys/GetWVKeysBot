@@ -180,7 +180,7 @@ async def key_count(ctx: commands.Context):
 
 
 @bot.hybrid_command(name="search", usage="<kid or pssh>", help="Search for a key by kid or pssh.")
-@commands.has_role(VERIFIED_ROLE)
+# @commands.has_role(VERIFIED_ROLE)
 async def key_search(ctx: commands.Context, query: str):
     if len(query) < 32:
         return await ctx.reply("Sorry, your query is not valid.")
