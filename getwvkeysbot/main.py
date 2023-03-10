@@ -96,6 +96,11 @@ async def on_member_update(old: discord.Member, new: discord.Member):
     if VERIFIED_ROLE in new._roles and VERIFIED_ROLE not in old._roles:
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": new.id})
+            # try to send the user a DM
+            try:
+                await new.send("Your request for verification has been approved!")
+            except Exception as e:
+                logger.exception("[Discord] Exception while trying to send DM to user {}".format(new.id), e)
         except HTTPException as e:
             logger.exception("[Discord] HTTPException while trying to enable user {}: {}".format(new.id), e)
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
