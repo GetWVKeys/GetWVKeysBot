@@ -5,7 +5,7 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, IS_DEVELOPMENT, LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID, SCRIPTS_CHANNEL_ID, VERIFIED_ROLE
+from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, GUILD_ID, IS_DEVELOPMENT, LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID, SCRIPTS_CHANNEL_ID, VERIFIED_ROLE
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -29,12 +29,18 @@ async def on_ready():
 # handles banning of users
 @bot.event
 async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.Member]):
+    # ignore servers that are not the main server
+    if guild.id != GUILD_ID:
+        return
+
     # ignore bots
     if user.bot:
         return
+
     # ignore users that are not verified
     if not VERIFIED_ROLE in user._roles:
         return
+
     logger.info("[Discord] User {}#{} (`{}`) was banned from {}".format(user.name, user.discriminator, user.id, guild.name))
 
     try:
@@ -52,12 +58,18 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
 # handles kicking and leaving of users
 @bot.event
 async def on_member_remove(user: Union[discord.User, discord.Member]):
+    # ignore servers that are not the main server
+    if user.guild.id != GUILD_ID:
+        return
+
     # ignore bots
     if user.bot:
         return
+
     # ignore users that are not verified
     if not VERIFIED_ROLE in user._roles:
         return
+
     logger.info("[Discord] User {}#{} (`{}`) was removed from {}".format(user.name, user.discriminator, user.id, user.guild.name))
 
     try:
@@ -75,6 +87,10 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
 # handles role changes of users
 @bot.event
 async def on_member_update(old: discord.Member, new: discord.Member):
+    # ignore servers that are not the main server
+    if new.guild.id != GUILD_ID:
+        return
+
     if old.bot:
         # ignore bots
         return
