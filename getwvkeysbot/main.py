@@ -5,11 +5,21 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
-                                 BOT_TOKEN, DEVELOPMENT_GUILD, GUILD_ID,
-                                 INTERROGATION_CHANNEL_ID, IS_DEVELOPMENT,
-                                 LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID,
-                                 SCRIPTS_CHANNEL_ID, SUS_ROLE, VERIFIED_ROLE)
+from getwvkeysbot.config import (
+    ADMIN_ROLES,
+    ADMIN_USERS,
+    BOT_PREFIX,
+    BOT_TOKEN,
+    DEVELOPMENT_GUILD,
+    GUILD_ID,
+    INTERROGATION_CHANNEL_ID,
+    IS_DEVELOPMENT,
+    LOG_CHANNEL_ID,
+    SCRIPT_DEV_ROLE_ID,
+    SCRIPTS_CHANNEL_ID,
+    SUS_ROLE,
+    VERIFIED_ROLE,
+)
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -261,6 +271,8 @@ async def suspend_user(ctx: commands.Context, member: discord.Member, reason: st
                 message = "{}, Your access has been suspended for the following reason: **{}**".format(member.mention, reason)
 
             await interrogation_channel.send(message)
+
+            await ctx.reply("{} has been suspended".format(member.mention))
     except Exception as e:
         logger.exception("[Discord]", e)
         await ctx.reply("An error occurred while suspending user: {}".format(e))
