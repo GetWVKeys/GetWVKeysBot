@@ -5,7 +5,21 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX, BOT_TOKEN, DEVELOPMENT_GUILD, GUILD_ID, IS_DEVELOPMENT, LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID, SCRIPTS_CHANNEL_ID, VERIFIED_ROLE
+from getwvkeysbot.config import (
+    ADMIN_ROLES,
+    ADMIN_USERS,
+    BOT_PREFIX,
+    BOT_TOKEN,
+    DEVELOPMENT_GUILD,
+    GUILD_ID,
+    INTERROGATION_CHANNEL_ID,
+    IS_DEVELOPMENT,
+    LOG_CHANNEL_ID,
+    SCRIPT_DEV_ROLE_ID,
+    SCRIPTS_CHANNEL_ID,
+    SUS_ROLE,
+    VERIFIED_ROLE,
+)
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -236,6 +250,30 @@ async def key_search(ctx: commands.Context, query: str):
     except Exception as e:
         logger.exception(e)
         await m.edit(content="An error occurred while searching: {}".format(e))
+
+
+@bot.hybrid_command(hidden=True, help="Suspends a user with an optional reason and rules broken")
+async def suspend_user(ctx: commands.Context, user: discord.User, *, reason: str = None, rules_broken: str = None):
+    # only allow admins to use command
+    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
+        return await ctx.reply("You're not elite enough, try harder.")
+    try:
+        # unverify the user
+        await user.remove_roles(ctx.guild.get_role(VERIFIED_ROLE))
+        await user.add_roles(ctx.guild.get_role(SUS_ROLE))
+
+        if reason:
+            # send a message to the interrogation channel
+            interrogation_channel = await bot.fetch_channel(INTERROGATION_CHANNEL_ID)
+            if rules_broken:
+                message = "{}, Your access has been suspended for the following reason: **Rule(s) {} - {}**".format(user.mention, rules_broken, reason)
+            else:
+                message = "{}, Your access has been suspended for the following reason: **{}**".format(user.mention, reason)
+
+            await interrogation_channel.send(message)
+    except Exception as e:
+        logger.exception("[Discord]", e)
+        await ctx.reply("An error occurred while suspending user: {}".format(e))
 
 
 @bot.hybrid_command(hidden=True, help="Disable a user account")
