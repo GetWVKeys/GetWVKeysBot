@@ -253,22 +253,22 @@ async def key_search(ctx: commands.Context, query: str):
 
 
 @bot.hybrid_command(hidden=True, help="Suspends a user with an optional reason and rules broken")
-async def suspend_user(ctx: commands.Context, user: discord.User, *, reason: str = None, rules_broken: str = None):
+async def suspend_user(ctx: commands.Context, member: discord.Member, *, reason: str = None, rules_broken: str = None):
     # only allow admins to use command
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
         return await ctx.reply("You're not elite enough, try harder.")
     try:
         # unverify the user
-        await user.remove_roles(ctx.guild.get_role(VERIFIED_ROLE))
-        await user.add_roles(ctx.guild.get_role(SUS_ROLE))
+        await member.remove_roles(ctx.guild.get_role(VERIFIED_ROLE))
+        await member.add_roles(ctx.guild.get_role(SUS_ROLE))
 
         if reason:
             # send a message to the interrogation channel
             interrogation_channel = await bot.fetch_channel(INTERROGATION_CHANNEL_ID)
             if rules_broken:
-                message = "{}, Your access has been suspended for the following reason: **Rule(s) {} - {}**".format(user.mention, rules_broken, reason)
+                message = "{}, Your access has been suspended for the following reason: **Rule(s) {} - {}**".format(member.mention, rules_broken, reason)
             else:
-                message = "{}, Your access has been suspended for the following reason: **{}**".format(user.mention, reason)
+                message = "{}, Your access has been suspended for the following reason: **{}**".format(member.mention, reason)
 
             await interrogation_channel.send(message)
     except Exception as e:
