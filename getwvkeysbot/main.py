@@ -5,21 +5,11 @@ from typing import Callable, Union
 import discord
 from discord.ext import commands
 
-from getwvkeysbot.config import (
-    ADMIN_ROLES,
-    ADMIN_USERS,
-    BOT_PREFIX,
-    BOT_TOKEN,
-    DEVELOPMENT_GUILD,
-    GUILD_ID,
-    INTERROGATION_CHANNEL_ID,
-    IS_DEVELOPMENT,
-    LOG_CHANNEL_ID,
-    SCRIPT_DEV_ROLE_ID,
-    SCRIPTS_CHANNEL_ID,
-    SUS_ROLE,
-    VERIFIED_ROLE,
-)
+from getwvkeysbot.config import (ADMIN_ROLES, ADMIN_USERS, BOT_PREFIX,
+                                 BOT_TOKEN, DEVELOPMENT_GUILD, GUILD_ID,
+                                 INTERROGATION_CHANNEL_ID, IS_DEVELOPMENT,
+                                 LOG_CHANNEL_ID, SCRIPT_DEV_ROLE_ID,
+                                 SCRIPTS_CHANNEL_ID, SUS_ROLE, VERIFIED_ROLE)
 from getwvkeysbot.redis import OPCode, make_api_request
 from getwvkeysbot.utils import FlagAction, UserFlags, construct_logger
 
@@ -253,7 +243,7 @@ async def key_search(ctx: commands.Context, query: str):
 
 
 @bot.hybrid_command(hidden=True, help="Suspends a user with an optional reason and rules broken")
-async def suspend_user(ctx: commands.Context, member: discord.Member, *, reason: str = None, rules_broken: str = None):
+async def suspend_user(ctx: commands.Context, member: discord.Member, reason: str = None, rules_broken: str = None):
     # only allow admins to use command
     if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
         return await ctx.reply("You're not elite enough, try harder.")
