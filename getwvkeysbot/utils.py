@@ -9,6 +9,21 @@ from getwvkeysbot.config import LOG_DATE_FORMAT, LOG_FILE_PATH, LOG_FORMAT, LOG_
 logger = logging.getLogger(__name__)
 
 
+class OPCode(Enum):
+    ERROR = -1
+    DISABLE_USER = 0
+    DISABLE_USER_BULK = 1
+    ENABLE_USER = 2
+    KEY_COUNT = 3
+    USER_COUNT = 4
+    SEARCH = 5
+    UPDATE_PERMISSIONS = 6
+    QUARANTINE = 7
+    REPLY = 8
+    RESET_API_KEY = 9
+
+
+
 class UserFlags(Enum):
     ADMIN = 1 << 0
     BETA_TESTER = 1 << 1
