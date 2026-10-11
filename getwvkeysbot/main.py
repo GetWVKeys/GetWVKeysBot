@@ -1,5 +1,4 @@
 import functools
-from http.client import HTTPException
 from typing import Callable, Union
 
 import discord
@@ -31,6 +30,21 @@ intents.members = True
 bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 
 
+class NotAdmin(commands.CheckFailure):
+    pass
+
+
+def is_admin():
+    """Only allow admin users or members with an admin role to use the command"""
+
+    async def predicate(ctx: commands.Context):
+        if ctx.author.id in ADMIN_USERS or any(x.id in ADMIN_ROLES for x in getattr(ctx.author, "roles", [])):
+            return True
+        raise NotAdmin()
+
+    return commands.check(predicate)
+
+
 @bot.event
 async def on_ready():
     if IS_DEVELOPMENT:
@@ -51,8 +65,8 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
     if user.bot:
         return
 
-    # ignore users that are not verified
-    if not VERIFIED_ROLE in user._roles:
+    # ignore users that are not verified (a plain User was not a cached member, so it has no roles)
+    if not isinstance(user, discord.Member) or VERIFIED_ROLE not in user._roles:
         return
 
     logger.info("[Discord] User {}#{} (`{}`) was banned from {}".format(user.name, user.discriminator, user.id, guild.name))
@@ -61,12 +75,12 @@ async def on_member_ban(guild: discord.Guild, user: Union[discord.User, discord.
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
+        except Exception:
+            logger.exception("[Discord] Error while trying to disable user {}".format(user.id))
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`) from the database. <@&975780356970123265>".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was banned, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
 
 
 # handles kicking and leaving of users
@@ -90,12 +104,12 @@ async def on_member_remove(user: Union[discord.User, discord.Member]):
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
+        except Exception:
+            logger.exception("[Discord] Error while trying to disable user {}".format(user.id))
             return await log_channel.send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was removed, their account has been disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
 
 
 # handles role changes of users
@@ -117,8 +131,8 @@ async def on_member_update(old: discord.Member, new: discord.Member):
     if VERIFIED_ROLE not in new._roles and VERIFIED_ROLE in old._roles:
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": new.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to disable user {}".format(new.id), e)
+        except Exception:
+            logger.exception("[Discord] Error while trying to disable user {}".format(new.id))
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to disable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was unverified, their account has been disabled.".format(new.name, new.discriminator, new.id))
 
@@ -130,9 +144,9 @@ async def on_member_update(old: discord.Member, new: discord.Member):
             try:
                 await new.send("Your request for verification has been approved!")
             except Exception as e:
-                logger.exception("[Discord] Exception while trying to send DM to user {}".format(new.id), e)
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to enable user {}: {}".format(new.id), e)
+                logger.exception("[Discord] Exception while trying to send DM to user {}".format(new.id))
+        except Exception:
+            logger.exception("[Discord] Error while trying to enable user {}".format(new.id))
             return await new.guild.get_channel(LOG_CHANNEL_ID).send("An error occurred while trying to enable user {}:{} (`{}`). <@&975780356970123265>".format(new.name, new.discriminator, new.id))
         await new.guild.get_channel(LOG_CHANNEL_ID).send("User {}#{} (`{}`) was verified, their account has been enabled.".format(new.name, new.discriminator, new.id))
 
@@ -147,6 +161,9 @@ async def on_command_error(ctx: commands.Context, e: Exception):
     if isinstance(e, commands.BadArgument):
         await ctx.reply("Please check the argument you provided. It is invalid.", ephemeral=True)
         return
+    if isinstance(e, NotAdmin):
+        await ctx.reply("You're not elite enough, try harder.")
+        return
     if isinstance(e, commands.CheckFailure):
         await ctx.reply("You are not allowed to use this command.", ephemeral=True)
         return
@@ -154,14 +171,14 @@ async def on_command_error(ctx: commands.Context, e: Exception):
         await ctx.reply("You are on cooldown. Please wait {} seconds before using this command again.".format(round(e.retry_after)), ephemeral=True)
         return
     if isinstance(e, commands.CommandInvokeError):
-        logger.exception("[Discord]", e)
+        logger.error("[Discord]", exc_info=e)
         await ctx.reply("An error occurred while executing the command. Please try again later.", ephemeral=True)
         return
     if isinstance(e, commands.CommandError):
-        logger.exception("[Discord]", e)
+        logger.error("[Discord]", exc_info=e)
         await ctx.reply("An error occurred while executing the command. Please try again later.", ephemeral=True)
         return
-    logger.exception("[Discord] An error occurred while executing the command {}".format(ctx.command.name), e)
+    logger.error("[Discord] An error occurred while executing the command {}".format(ctx.command.name), exc_info=e)
 
 
 @bot.command(help="Syncs commands", hidden=True)
@@ -177,11 +194,9 @@ async def ping(ctx: commands.Context):
 
 
 @bot.hybrid_command(hidden=True, help="Sync the guild bans with the database. This will disable users that are banned from the guild.")
+@is_admin()
 @commands.cooldown(1, 3600, commands.BucketType.guild)
 async def sync(ctx: commands.Context):
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
     m = await ctx.reply("Syncing the banned users with the database might take a while. Please be patient.")
     # sync the banned users with the database
     try:
@@ -232,7 +247,7 @@ async def key_search(ctx: commands.Context, query: str):
         embed = discord.Embed(title="Search Results for '{}'".format(query), description="Found **{}** result{}".format(len(keys), "s" if len(keys) > 1 else ""))
 
         results_field = ""
-        for key_entry in keys:
+        for i, key_entry in enumerate(keys):
             key = key_entry.get("key")
             # added_at = key_entry.get("added_at")
             # license_url = key_entry.get("license_url")
@@ -240,7 +255,7 @@ async def key_search(ctx: commands.Context, query: str):
             # if adding the field_value to results_field exceeds 1024 characters, don't add the field
             if len(results_field + field_value) > 1024:
                 logger.warn("Adding the field value to the results field would exceed 1024 characters. KID: {}".format(kid))
-                embed.set_footer(text="{} keys were omitted.".format(len(keys) - len(results_field.split("\n"))))
+                embed.set_footer(text="{} keys were omitted.".format(len(keys) - i))
                 break
             results_field += field_value
 
@@ -253,14 +268,17 @@ async def key_search(ctx: commands.Context, query: str):
 
 
 @bot.hybrid_command(hidden=True, help="Suspends a user with an optional reason and rules broken")
+@is_admin()
 async def suspend_user(ctx: commands.Context, member: discord.Member, reason: str = None, rules_broken: str = None):
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
+    verified_role = ctx.guild.get_role(VERIFIED_ROLE) if ctx.guild else None
+    sus_role = ctx.guild.get_role(SUS_ROLE) if ctx.guild else None
+    if verified_role is None or sus_role is None:
+        return await ctx.reply("This command can only be used in the main server.")
+
     try:
         # unverify the user
-        await member.remove_roles(ctx.guild.get_role(VERIFIED_ROLE))
-        await member.add_roles(ctx.guild.get_role(SUS_ROLE))
+        await member.remove_roles(verified_role)
+        await member.add_roles(sus_role)
 
         if reason:
             # send a message to the interrogation channel
@@ -272,74 +290,67 @@ async def suspend_user(ctx: commands.Context, member: discord.Member, reason: st
 
             await interrogation_channel.send(message)
 
-            await ctx.reply("{} has been suspended".format(member.mention))
+        await ctx.reply("{} has been suspended".format(member.mention))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while suspending user: {}".format(e))
 
 
 @bot.hybrid_command(hidden=True, help="Disable a user account")
+@is_admin()
 async def disable_user(ctx: commands.Context, user: discord.User):
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.DISABLE_USER, {"user_id": user.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to disable user {}".format(user.id), e)
+        except Exception:
+            logger.exception("[Discord] Error while trying to disable user {}".format(user.id))
             return await ctx.reply("An error occurred while trying to disable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was disabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was disabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while disabling user: {}".format(e))
 
 
 @bot.hybrid_command(hidden=True, help="Enable a user account")
+@is_admin()
 async def enable_user(ctx: commands.Context, user: discord.User):
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.ENABLE_USER, {"user_id": user.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to enable user {}".format(user.id), e)
-            return await ctx.reply.send("An error occurred while trying to enable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+        except Exception:
+            logger.exception("[Discord] Error while trying to enable user {}".format(user.id))
+            return await ctx.reply("An error occurred while trying to enable user {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("User {}#{} (`{}`) was enabled by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("User {}#{} (`{}`) was enabled.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while enabling user: {}".format(e))
 
 
 @bot.hybrid_command(hidden=True, help="Reset a users API Key")
+@is_admin()
 # TODO: limit this to 2 times per day
 async def reset_api_key(ctx: commands.Context, user: discord.User):
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
     try:
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.RESET_API_KEY, {"user_id": user.id})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to reset API Key for {}".format(user.id), e)
-            return await ctx.reply.send("An error occurred while trying to reset API Key for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+        except Exception:
+            logger.exception("[Discord] Error while trying to reset API Key for {}".format(user.id))
+            return await ctx.reply("An error occurred while trying to reset API Key for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send("API Key for {}#{} (`{}`) was reset by {}#{} (`{}`)".format(user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id))
         await ctx.reply("API Key for {}#{} (`{}`) was reset.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while resetting user API Key: {}".format(e))
 
 
 @bot.hybrid_command(hidden=True, help="Lists user flags", name="flags")
+@is_admin()
 async def list_flags(ctx: commands.Context):
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
     names = []
     for name in UserFlags._member_names_:
         names.append(f"``{name}``")
@@ -348,13 +359,10 @@ async def list_flags(ctx: commands.Context):
 
 
 @bot.hybrid_command(hidden=True, help="Update a users flags")
+@is_admin()
 async def update_flags(ctx: commands.Context, user: discord.User, action: str, flag: str):
     flag = flag.upper()
     action = action.upper()
-
-    # only allow admins to use command
-    if not ctx.author.id in ADMIN_USERS and not any(x.id in ADMIN_ROLES for x in ctx.author.roles):
-        return await ctx.reply("You're not elite enough, try harder.")
 
     if action not in FlagAction._member_names_:
         return await ctx.reply("Invalid action! Valid actions are ``add``, ``remove``")
@@ -372,9 +380,9 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
         log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
         try:
             await _make_api_request(OPCode.UPDATE_PERMISSIONS, {"user_id": user.id, "permission_action": action_value, "permissions": flag_value})
-        except HTTPException as e:
-            logger.exception("[Discord] HTTPException while trying to update user permissions for {}".format(user.id), e)
-            return await ctx.reply.send("An error occurred while trying to update permissions for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
+        except Exception:
+            logger.exception("[Discord] Error while trying to update user permissions for {}".format(user.id))
+            return await ctx.reply("An error occurred while trying to update permissions for {}:{} (`{}`)".format(user.name, user.discriminator, user.id))
         await log_channel.send(
             "Permissions for {}#{} (`{}`) were updated by {}#{} (`{}`). {} {}".format(
                 user.name, user.discriminator, user.id, ctx.author.name, ctx.author.discriminator, ctx.author.id, action_value, flag_value
@@ -382,7 +390,7 @@ async def update_flags(ctx: commands.Context, user: discord.User, action: str, f
         )
         await ctx.reply("Permissions for {}#{} (`{}`) were updated.".format(user.name, user.discriminator, user.id))
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while updating user permissions: {}".format(e))
 
 
@@ -408,7 +416,7 @@ async def pin_message_to_thread_channel(ctx: commands.Context, message_id: str):
         await message.pin()
         await ctx.reply("Message pinned.", ephemeral=True)
     except Exception as e:
-        logger.exception("[Discord]", e)
+        logger.exception("[Discord]")
         await ctx.reply("An error occurred while pinning message: {}".format(e), ephemeral=True)
 
 

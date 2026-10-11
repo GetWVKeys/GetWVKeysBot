@@ -1,13 +1,17 @@
 from enum import Enum
 import json
 import logging
-import random
+import time
+import uuid
 import redis
 
 from getwvkeysbot.config import REDIS_URI
 
 
 logger = logging.getLogger(__name__)
+
+# seconds to wait for the API to reply to a request
+API_TIMEOUT = 30
 
 
 class OPCode(Enum):
@@ -50,19 +54,28 @@ p = redis_cli.pubsub(ignore_subscribe_messages=True)
 # redis_thread = p.run_in_thread(daemon=True)
 
 
-def make_api_request(action: OPCode, data={}):
-    reply_address = "api-" + str(random.randint(1000, 9999))
-    p.subscribe(reply_address)
-    payload = {"op": action.value, "d": data, "reply_to": reply_address}
+def make_api_request(action: OPCode, data={}, timeout: float = API_TIMEOUT):
+    # this runs in executor threads, so each request needs its own pubsub; a shared one is not thread safe
+    reply_address = "api-" + uuid.uuid4().hex
+    pubsub = redis_cli.pubsub(ignore_subscribe_messages=True)
+    try:
+        pubsub.subscribe(reply_address)
+        payload = {"op": action.value, "d": data, "reply_to": reply_address}
 
-    redis_cli.publish("api", json.dumps(payload))
-    for message in p.listen():
-        logger.debug(message)
-        if message["type"] == "message":
-            p.unsubscribe(reply_address)
-            rd = json.loads(message["data"])
-            rmsg = rd["d"]["message"]
-            rop = rd["op"]
-            if rop == OPCode.ERROR.value:
-                raise Exception(rmsg)
-            return rmsg
+        redis_cli.publish("api", json.dumps(payload))
+        deadline = time.monotonic() + timeout
+        while (remaining := deadline - time.monotonic()) > 0:
+            message = pubsub.get_message(timeout=remaining)
+            if message is None:
+                continue
+            logger.debug(message)
+            if message["type"] == "message":
+                rd = json.loads(message["data"])
+                rmsg = rd["d"]["message"]
+                rop = rd["op"]
+                if rop == OPCode.ERROR.value:
+                    raise Exception(rmsg)
+                return rmsg
+        raise TimeoutError("No reply from the API for {} after {} seconds".format(action.name, timeout))
+    finally:
+        pubsub.close()
